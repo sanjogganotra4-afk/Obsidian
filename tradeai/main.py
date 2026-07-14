@@ -12,8 +12,10 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+import secrets as pysecrets
+
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -97,6 +99,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="TradeAI", lifespan=lifespan)
+
+PASSWORD = os.environ.get("TRADEAI_PASSWORD", "")
+
+
+@app.middleware("http")
+async def require_password(request: Request, call_next):
+    """If TRADEAI_PASSWORD is set, every /api call must carry it. Set it
+    whenever the server is reachable from outside your home network."""
+    if PASSWORD and request.url.path.startswith("/api"):
+        supplied = request.headers.get("x-auth", "")
+        if not pysecrets.compare_digest(supplied, PASSWORD):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return await call_next(request)
 
 
 class WatchlistBody(BaseModel):

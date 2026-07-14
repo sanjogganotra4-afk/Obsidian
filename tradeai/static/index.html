@@ -136,8 +136,14 @@ function show(name, btn) {
   btn.classList.add('active');
 }
 
-async function api(path, body) {
-  const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : undefined);
+async function api(path, body, isRetry) {
+  const headers = {'X-Auth': localStorage.tradeaiPw || ''};
+  if (body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(path, {method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined});
+  if (r.status === 401 && !isRetry) {
+    const pw = prompt('Enter your TradeAI password');
+    if (pw) { localStorage.tradeaiPw = pw; return api(path, body, true); }
+  }
   return r.json();
 }
 

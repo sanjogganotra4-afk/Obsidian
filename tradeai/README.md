@@ -32,10 +32,39 @@ Keys (both required for the council; the rest of the app works without them):
 3. On the iPad (same Wi-Fi), open Safari → `http://<that-ip>:8000`.
 4. Share button → **Add to Home Screen** → it installs as a full-screen app.
 
-To use it away from home, deploy the `tradeai/` folder to Railway/Render
-(free tiers work) with the two keys as environment variables, or keep it
-local and use Tailscale. If you expose it to the internet, put auth in
-front of it first.
+## One-time setup for permanent iPad access
+
+Two options, both set-and-forget:
+
+**A. Cloud (laptop can be off) — Render.com**
+1. Push this repo to your GitHub, then on render.com: New → Web Service →
+   connect the repo.
+2. Root Directory: `tradeai` • Build: `pip install -r requirements.txt` •
+   Start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3. Environment tab: add `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, and
+   `TRADEAI_PASSWORD` (required — this makes the public URL safe).
+4. Open the `https://….onrender.com` URL on the iPad, enter the password
+   once, Add to Home Screen. Done forever.
+5. Free-tier caveat: Render sleeps the app after ~15 idle minutes and the
+   scheduler stops while asleep. Fix free with a monitor
+   (e.g. UptimeRobot pinging `/` every 5 min), or pay ~$7/mo to keep it
+   always-on. Free instances also have ephemeral disk — the paper
+   portfolio resets on redeploys; a paid persistent disk (mount at a path
+   and set `TRADEAI_DB` to a file on it) survives.
+
+**B. Home server (₹0) — laptop stays home, plugged in**
+1. Set the laptop to never sleep when plugged in (lid can be closed on
+   Mac with an external display setting or `caffeinate`; Windows: Power
+   settings → never sleep).
+2. Install [Tailscale](https://tailscale.com) (free) on both laptop and
+   iPad, sign in with the same account — the iPad can then reach the
+   laptop from anywhere, encrypted, no port forwarding.
+3. Auto-start the server on boot (Windows Task Scheduler / Mac launchd)
+   so reboots need nothing from you.
+4. On the iPad: `http://<laptop-tailscale-name>:8000` → Add to Home Screen.
+
+If the server is only ever on your home Wi-Fi, `TRADEAI_PASSWORD` can stay
+blank; set it the moment the app is reachable from outside.
 
 ## How a trading cycle works
 
