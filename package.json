@@ -1,0 +1,10 @@
+{
+  "name": "obsidian-progress-map",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Regenerates an Obsidian Canvas checkpoint map on a fixed interval so a coding session can resume after running out of context.",
+  "scripts": {
+    "watch": "node checkpoint/watch.js",
+    "snapshot": "node checkpoint/generate-canvas.js"
+  }
+}

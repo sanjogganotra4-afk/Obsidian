@@ -1,0 +1,3 @@
+node_modules/
+vault/*/state.json
+vault/*/PROGRESS-MAP.canvas
