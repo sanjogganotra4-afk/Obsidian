@@ -83,18 +83,29 @@ async def ask_claude(client: httpx.AsyncClient, analysis: dict, position: dict |
 
 async def ask_gemini(client: httpx.AsyncClient, analysis: dict, position: dict | None) -> dict:
     key = os.environ["GEMINI_API_KEY"]
-    model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
     r = await client.post(
         GEMINI_URL.format(model=model),
         params={"key": key},
         json={
             "contents": [{"role": "user", "parts": [{"text": f"{GEMINI_ROLE}\n\n{_prompt(analysis, position)}"}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300, "responseMimeType": "application/json"},
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 1000,
+                "responseMimeType": "application/json",
+                # newer flash models "think" by default, burning the output
+                # budget before any JSON is emitted — turn that off
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
         },
         timeout=45.0,
     )
     r.raise_for_status()
-    return _parse_verdict(r.json()["candidates"][0]["content"]["parts"][0]["text"], "gemini")
+    candidate = r.json()["candidates"][0]
+    text = "".join(p.get("text", "") for p in candidate.get("content", {}).get("parts", []))
+    if not text:
+        raise ValueError(f"Gemini returned no text (finishReason={candidate.get('finishReason')})")
+    return _parse_verdict(text, "gemini")
 
 
 def arbitrate(claude: dict, gemini: dict, min_confidence: float) -> tuple[str, str]:
@@ -116,8 +127,9 @@ def keys_present() -> tuple[bool, str]:
     if missing:
         return False, f"Missing API keys: {', '.join(missing)}. Set them in tradeai/.env"
     gem = os.environ["GEMINI_API_KEY"]
-    if not gem.startswith("AIza"):
-        return False, "GEMINI_API_KEY does not start with 'AIza' — verify it came from aistudio.google.com"
+    # AI Studio keys start with "AIza"; Vertex AI express-mode keys start with "AQ."
+    if not (gem.startswith("AIza") or gem.startswith("AQ.")):
+        return False, "GEMINI_API_KEY should start with 'AIza' (aistudio.google.com) or 'AQ.' (Vertex express)"
     return True, ""
 
 
