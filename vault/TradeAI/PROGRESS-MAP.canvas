@@ -115,7 +115,7 @@
       "y": 480,
       "width": 400,
       "height": 260,
-      "text": "## Working tree changes\nM .gitignore\n?? tradeai/"
+      "text": "## Working tree changes\nM  .gitignore\nA  tradeai/.env.example\nA  tradeai/README.md\nA  tradeai/council.py\nA  tradeai/db.py\nA  tradeai/engine.py\nA  tradeai/main.py\nA  tradeai/market.py\nA  tradeai/requirements.txt\nA  tradeai/static/index.html\nA  tradeai/static/manifest.json\nA  tradeai/test_smoke.py\nA  vault/TradeAI/PROGRESS-MAP.canvas\nA  vault/TradeAI/state.json"
     }
   ],
   "edges": [
