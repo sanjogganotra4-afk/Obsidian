@@ -122,24 +122,89 @@ def arbitrate(claude: dict, gemini: dict, min_confidence: float) -> tuple[str, s
     return "HOLD", "SOFT_SPLIT"
 
 
-def keys_present() -> tuple[bool, str]:
-    missing = [k for k in ("ANTHROPIC_API_KEY", "GEMINI_API_KEY") if not os.environ.get(k)]
-    if missing:
-        return False, f"Missing API keys: {', '.join(missing)}. Set them in tradeai/.env"
-    gem = os.environ["GEMINI_API_KEY"]
+SOLO_CONFIDENCE_MARGIN = 15  # solo mode needs min_confidence + this to trade
+
+
+def council_mode() -> tuple[str, str]:
+    """What the council can run as right now, based on configured keys."""
+    has_claude = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    gem = os.environ.get("GEMINI_API_KEY", "")
     # AI Studio keys start with "AIza"; Vertex AI express-mode keys start with "AQ."
-    if not (gem.startswith("AIza") or gem.startswith("AQ.")):
-        return False, "GEMINI_API_KEY should start with 'AIza' (aistudio.google.com) or 'AQ.' (Vertex express)"
-    return True, ""
+    has_gemini = gem.startswith("AIza") or gem.startswith("AQ.")
+    if has_claude and has_gemini:
+        return "FULL", "Full council: Claude + Gemini, unanimous voting"
+    if has_gemini:
+        return "SOLO_GEMINI", f"Solo mode: Gemini only (no ANTHROPIC_API_KEY) — trades need confidence ≥ min+{SOLO_CONFIDENCE_MARGIN}"
+    if has_claude:
+        return "SOLO_CLAUDE", f"Solo mode: Claude only (no valid GEMINI_API_KEY) — trades need confidence ≥ min+{SOLO_CONFIDENCE_MARGIN}"
+    return "RULE_ONLY", "No API keys — rule engine only: protective exits allowed, no new positions"
+
+
+def rule_signal(analysis: dict, position: dict | None) -> dict:
+    """Deterministic indicator-based fallback. Conservative by design."""
+    rsi = analysis.get("rsi14") or 50
+    trend_up = analysis.get("above_ema20") and analysis.get("above_ema50")
+    trend_down = not analysis.get("above_ema20") and not analysis.get("above_ema50")
+    vol = analysis.get("volume_ratio") or 1.0
+    if position and trend_down:
+        return {"model": "rule-engine", "action": "SELL", "confidence": 70,
+                "reasoning": "Price below both EMA20 and EMA50 — protective exit."}
+    if position and rsi >= 78:
+        return {"model": "rule-engine", "action": "SELL", "confidence": 65,
+                "reasoning": f"RSI {rsi} overbought — protective profit-take."}
+    if not position and trend_up and 50 <= rsi <= 70 and vol >= 1.2:
+        return {"model": "rule-engine", "action": "BUY", "confidence": 60,
+                "reasoning": f"Uptrend above both EMAs, RSI {rsi}, volume {vol}x — but rule engine never opens positions."}
+    return {"model": "rule-engine", "action": "HOLD", "confidence": 50,
+            "reasoning": "No strong rule signal."}
+
+
+def resolve_degraded(claude: dict | None, gemini: dict | None, analysis: dict,
+                     position: dict | None, min_confidence: float) -> dict:
+    """Arbitrate with whatever survived. Never raises — always returns a verdict."""
+    if claude and gemini:
+        action, outcome = arbitrate(claude, gemini, min_confidence)
+        return {"claude": claude, "gemini": gemini, "final_action": action,
+                "outcome": outcome, "mode": "FULL", "note": ""}
+    solo = claude or gemini
+    if solo:
+        mode = "SOLO_CLAUDE" if claude else "SOLO_GEMINI"
+        bar = min_confidence + SOLO_CONFIDENCE_MARGIN
+        if solo["action"] == "HOLD":
+            action, outcome = "HOLD", "SOLO_HOLD"
+        elif solo["confidence"] >= bar:
+            action, outcome = solo["action"], "EXECUTE_SOLO"
+        else:
+            action, outcome = "HOLD", "SOLO_LOW_CONFIDENCE"
+        return {"claude": claude, "gemini": gemini, "final_action": action, "outcome": outcome,
+                "mode": mode, "note": f"One panel unavailable — solo trade bar {bar}."}
+    rule = rule_signal(analysis, position)
+    if rule["action"] == "SELL" and position:
+        action, outcome = "SELL", "EXECUTE_RULE_EXIT"
+    elif rule["action"] == "BUY":
+        action, outcome = "HOLD", "RULE_SUGGEST_BUY"  # never open positions without an AI
+    else:
+        action, outcome = "HOLD", "RULE_HOLD"
+    return {"claude": None, "gemini": None, "final_action": action, "outcome": outcome,
+            "mode": "RULE_ONLY", "note": f"Rule engine: {rule['reasoning']}"}
 
 
 async def deliberate(analysis: dict, position: dict | None, min_confidence: float) -> dict:
-    """Run both models in parallel and arbitrate. Raises on API failure."""
+    """Ask every model whose key is configured; degrade gracefully if any call fails."""
     import asyncio
+    claude = gemini = None
     async with httpx.AsyncClient() as client:
-        claude, gemini = await asyncio.gather(
-            ask_claude(client, analysis, position),
-            ask_gemini(client, analysis, position),
-        )
-    final_action, outcome = arbitrate(claude, gemini, min_confidence)
-    return {"claude": claude, "gemini": gemini, "final_action": final_action, "outcome": outcome}
+        tasks = {}
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            tasks["claude"] = ask_claude(client, analysis, position)
+        if os.environ.get("GEMINI_API_KEY"):
+            tasks["gemini"] = ask_gemini(client, analysis, position)
+        results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+        for name, res in zip(tasks, results):
+            if isinstance(res, Exception):
+                log.warning("%s panel failed for %s: %s", name, analysis["symbol"], res)
+            elif name == "claude":
+                claude = res
+            else:
+                gemini = res
+    return resolve_degraded(claude, gemini, analysis, position, min_confidence)

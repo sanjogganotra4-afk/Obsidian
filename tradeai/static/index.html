@@ -145,11 +145,12 @@ function render() {
   const s = state, pf = s.portfolio;
   document.getElementById('marketBadge').textContent = s.market_open ? 'MARKET OPEN' : 'MARKET CLOSED';
   document.getElementById('marketBadge').className = 'badge ' + (s.market_open ? 'on' : 'off');
-  document.getElementById('councilBadge').textContent = s.council_ready ? 'COUNCIL READY' : 'COUNCIL OFFLINE';
-  document.getElementById('councilBadge').className = 'badge ' + (s.council_ready ? 'on' : 'off');
+  const cb = document.getElementById('councilBadge');
+  cb.textContent = {FULL:'FULL COUNCIL', SOLO_CLAUDE:'SOLO: CLAUDE', SOLO_GEMINI:'SOLO: GEMINI', RULE_ONLY:'RULE-ONLY'}[s.council_mode] || s.council_mode;
+  cb.className = 'badge ' + (s.council_mode === 'FULL' ? 'on' : 'off');
   document.getElementById('statusLine').textContent =
     (s.kill_switch ? '⛔ KILL SWITCH ON — trading paused. ' : '') +
-    (s.council_ready ? '' : s.council_status);
+    (s.council_mode === 'FULL' ? '' : s.council_status);
 
   document.getElementById('stTotal').textContent = inr(pf.total);
   document.getElementById('stCash').textContent = inr(pf.cash);
@@ -164,15 +165,20 @@ function render() {
         <td><button class="small" onclick="sellPos('${p.symbol}')">Exit</button></td></tr>`).join('') + '</table>'
     : '<div class="empty">No open positions. The council will open positions when both AIs agree.</div>';
 
+  const tagCls = o => o.startsWith('EXECUTE') ? 'EXECUTE'
+    : (o.includes('HARD_SPLIT') || o.includes('ERROR')) ? 'HARD_SPLIT'
+    : (o.includes('SPLIT') || o.includes('LOW_CONFIDENCE') || o.includes('SUGGEST')) ? 'SOFT_SPLIT'
+    : 'UNANIMOUS_HOLD';
   document.getElementById('councilLog').innerHTML = s.council.length
     ? s.council.map(c => `<div class="council-row">
         <span class="verdict">${c.symbol.replace('.NS','')} → ${c.final_action}</span>
-        <span class="tag ${c.outcome.startsWith('COUNCIL_ERROR') ? 'HARD_SPLIT' : c.outcome}">${c.outcome}</span>
+        <span class="tag ${tagCls(c.outcome)}">${c.outcome}</span>
         <span style="float:right;color:var(--dim);font-size:11px">${new Date(c.ts).toLocaleTimeString()}</span>
         <div class="models">
-          <div class="model">🔵 <b>Claude</b> (risk): ${c.claude_action ?? '—'} ${c.claude_confidence ?? ''}<br>${c.claude_reasoning ?? ''}</div>
-          <div class="model">🟢 <b>Gemini</b> (technical): ${c.gemini_action ?? '—'} ${c.gemini_confidence ?? ''}<br>${c.gemini_reasoning ?? ''}</div>
-        </div></div>`).join('')
+          <div class="model">🔵 <b>Claude</b> (risk): ${c.claude_action ?? '—'} ${c.claude_confidence ?? ''}<br>${c.claude_reasoning ?? '(panel unavailable)'}</div>
+          <div class="model">🟢 <b>Gemini</b> (technical): ${c.gemini_action ?? '—'} ${c.gemini_confidence ?? ''}<br>${c.gemini_reasoning ?? '(panel unavailable)'}</div>
+        </div>
+        ${c.note ? `<div class="notice" style="font-size:12px">${c.note}</div>` : ''}</div>`).join('')
     : '<div class="card empty">No council sessions yet. Tap "Run council cycle now".</div>';
 
   document.getElementById('trades').innerHTML = s.trades.length

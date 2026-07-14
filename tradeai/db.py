@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS council_sessions (
     gemini_reasoning  TEXT,
     final_action      TEXT NOT NULL,
     outcome           TEXT NOT NULL,
+    note              TEXT DEFAULT '',
     ts                TEXT NOT NULL
 );
 """
@@ -76,6 +77,10 @@ def conn() -> sqlite3.Connection:
 def init():
     with _lock, conn() as c:
         c.executescript(SCHEMA)
+        try:  # migrate DBs created before the note column existed
+            c.execute("ALTER TABLE council_sessions ADD COLUMN note TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
         for k, v in DEFAULTS.items():
             c.execute("INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)", (k, v))
 
@@ -136,17 +141,17 @@ def recent_trades(limit: int = 50) -> list[dict]:
         return [dict(r) for r in c.execute("SELECT * FROM trades ORDER BY id DESC LIMIT ?", (limit,))]
 
 
-def log_council(symbol: str, claude: dict | None, gemini: dict | None, final_action: str, outcome: str):
+def log_council(symbol: str, claude: dict | None, gemini: dict | None, final_action: str, outcome: str, note: str = ""):
     cl = claude or {}
     ge = gemini or {}
     with _lock, conn() as c:
         c.execute(
             """INSERT INTO council_sessions
                (symbol, claude_action, claude_confidence, claude_reasoning,
-                gemini_action, gemini_confidence, gemini_reasoning, final_action, outcome, ts)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                gemini_action, gemini_confidence, gemini_reasoning, final_action, outcome, note, ts)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (symbol, cl.get("action"), cl.get("confidence"), cl.get("reasoning"),
-             ge.get("action"), ge.get("confidence"), ge.get("reasoning"), final_action, outcome, now()),
+             ge.get("action"), ge.get("confidence"), ge.get("reasoning"), final_action, outcome, note, now()),
         )
 
 

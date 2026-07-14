@@ -106,7 +106,7 @@
       "width": 560,
       "height": 260,
       "color": "5",
-      "text": "## RESUME HERE\nBranch: claude/obsidian-map-checkpoints-qhshyw\nLast commit: 9cde1b9 Add Obsidian Canvas checkpoint tool for TradeAI build (12 minutes ago)\nCurrent phase: 1A\nLast updated: 2026-07-14T07:01:39.860Z\n\n**Blockers:**\nNONE\n\n**Recent notes:**\n- Lean rebuild done: 17/17 smoke checks pass. Polling UI instead of WebSocket (1G folded in). Phase 2 (Kite) pending user keys."
+      "text": "## RESUME HERE\nBranch: claude/obsidian-map-checkpoints-qhshyw\nLast commit: 32aaab4 Support Vertex express-mode Gemini keys and fix thinking-model truncation (19 minutes ago)\nCurrent phase: 1A\nLast updated: 2026-07-14T07:27:30.090Z\n\n**Blockers:**\nNONE\n\n**Recent notes:**\n- Lean rebuild done: 17/17 smoke checks pass. Polling UI instead of WebSocket (1G folded in). Phase 2 (Kite) pending user keys.\n- Fallback ladder added: FULL -> SOLO (bar 75) -> RULE_ONLY (protective exits only). 24/24 checks. Live-verified solo-Gemini path."
     },
     {
       "id": "changed-files",
@@ -115,7 +115,7 @@
       "y": 480,
       "width": 400,
       "height": 260,
-      "text": "## Working tree changes\nM  .gitignore\nA  tradeai/.env.example\nA  tradeai/README.md\nA  tradeai/council.py\nA  tradeai/db.py\nA  tradeai/engine.py\nA  tradeai/main.py\nA  tradeai/market.py\nA  tradeai/requirements.txt\nA  tradeai/static/index.html\nA  tradeai/static/manifest.json\nA  tradeai/test_smoke.py\nA  vault/TradeAI/PROGRESS-MAP.canvas\nA  vault/TradeAI/state.json"
+      "text": "## Working tree changes\nM tradeai/README.md\nM tradeai/council.py\nM tradeai/db.py\nM tradeai/main.py\nM tradeai/static/index.html\nM tradeai/test_smoke.py\nM vault/TradeAI/state.json"
     }
   ],
   "edges": [

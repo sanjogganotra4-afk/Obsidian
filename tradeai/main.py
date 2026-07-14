@@ -38,9 +38,6 @@ async def run_cycle(force: bool = False) -> dict:
         return {"ran": False, "reason": "kill switch is ON"}
     if not force and not engine.is_market_open():
         return {"ran": False, "reason": "market closed (NSE 9:15-15:30 IST, Mon-Fri)"}
-    ok, msg = council.keys_present()
-    if not ok:
-        return {"ran": False, "reason": msg}
 
     async with cycle_lock:
         min_conf = float(db.get_config("min_confidence"))
@@ -53,18 +50,20 @@ async def run_cycle(force: bool = False) -> dict:
                 continue
             try:
                 verdict = await council.deliberate(analysis, positions.get(symbol), min_conf)
-            except Exception as e:
-                log.warning("council failed for %s: %s", symbol, e)
-                db.log_council(symbol, None, None, "HOLD", f"COUNCIL_ERROR: {e}")
+            except Exception as e:  # deliberate degrades internally; this is a last resort
+                log.exception("council failed for %s", symbol)
+                db.log_council(symbol, None, None, "HOLD", "COUNCIL_ERROR", str(e)[:300])
                 results.append({"symbol": symbol, "outcome": "COUNCIL_ERROR"})
                 continue
-            db.log_council(symbol, verdict["claude"], verdict["gemini"], verdict["final_action"], verdict["outcome"])
+            db.log_council(symbol, verdict["claude"], verdict["gemini"], verdict["final_action"],
+                           verdict["outcome"], verdict["note"])
             executed = None
-            if verdict["outcome"] == "EXECUTE":
+            if verdict["outcome"].startswith("EXECUTE"):
+                trade_note = f"{verdict['mode']}_{verdict['final_action']}"
                 if verdict["final_action"] == "BUY" and symbol not in positions:
-                    executed = await asyncio.to_thread(engine.execute_buy, symbol, "COUNCIL_UNANIMOUS_BUY")
+                    executed = await asyncio.to_thread(engine.execute_buy, symbol, trade_note)
                 elif verdict["final_action"] == "SELL" and symbol in positions:
-                    executed = await asyncio.to_thread(engine.execute_sell, symbol, "COUNCIL_UNANIMOUS_SELL")
+                    executed = await asyncio.to_thread(engine.execute_sell, symbol, trade_note)
             results.append({"symbol": symbol, "outcome": verdict["outcome"],
                             "action": verdict["final_action"], "executed": executed})
         last_cycle.update(ts=db.now(), summary=results)
@@ -114,7 +113,7 @@ class TradeBody(BaseModel):
 
 @app.get("/api/state")
 async def state():
-    keys_ok, keys_msg = council.keys_present()
+    mode, mode_msg = council.council_mode()
     return {
         "portfolio": await asyncio.to_thread(engine.portfolio_value),
         "trades": db.recent_trades(30),
@@ -122,8 +121,8 @@ async def state():
         "watchlist": db.get_watchlist(),
         "kill_switch": db.get_config("kill_switch") == "1",
         "market_open": engine.is_market_open(),
-        "council_ready": keys_ok,
-        "council_status": keys_msg or "ready",
+        "council_mode": mode,
+        "council_status": mode_msg,
         "last_cycle": last_cycle,
         "mode": "PAPER",
     }

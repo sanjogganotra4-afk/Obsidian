@@ -10,7 +10,7 @@ os.environ["TRADEAI_DB"] = os.path.join(tempfile.mkdtemp(), "test.db")
 import db
 import engine
 import market
-from council import arbitrate, _parse_verdict
+from council import arbitrate, _parse_verdict, resolve_degraded, rule_signal
 
 FAKE_PRICES = {"RELIANCE.NS": 2450.0}
 market.get_ltp = lambda symbol: FAKE_PRICES.get(symbol)
@@ -51,6 +51,25 @@ check("hard split blocks", arbitrate(buy(90), sell(90), 60) == ("HOLD", "HARD_SP
 check("soft split holds", arbitrate(buy(80), hold(50), 60) == ("HOLD", "SOFT_SPLIT"))
 check("unanimous hold", arbitrate(hold(80), hold(80), 60) == ("HOLD", "UNANIMOUS_HOLD"))
 check("unanimous sell executes", arbitrate(sell(75), sell(70), 60) == ("SELL", "EXECUTE"))
+
+print("fallback ladder:")
+bull = {"symbol": "X.NS", "rsi14": 58, "above_ema20": True, "above_ema50": True, "volume_ratio": 1.5}
+bear = {"symbol": "X.NS", "rsi14": 30, "above_ema20": False, "above_ema50": False, "volume_ratio": 1.0}
+pos = {"qty": 10, "entry_price": 100.0, "stop_loss": 97.0, "target": 106.0}
+
+r = resolve_degraded(buy(80), buy(70), bull, None, 60)
+check("full council still works", r["mode"] == "FULL" and r["outcome"] == "EXECUTE")
+r = resolve_degraded(None, buy(80), bull, None, 60)
+check("solo executes above raised bar", r["mode"] == "SOLO_GEMINI" and r["outcome"] == "EXECUTE_SOLO")
+r = resolve_degraded(None, buy(70), bull, None, 60)
+check("solo blocks below raised bar (70 < 75)", r["outcome"] == "SOLO_LOW_CONFIDENCE" and r["final_action"] == "HOLD")
+r = resolve_degraded(buy(90), None, bull, None, 60)
+check("claude solo mode labelled", r["mode"] == "SOLO_CLAUDE")
+r = resolve_degraded(None, None, bear, pos, 60)
+check("rule engine protective exit executes", r["mode"] == "RULE_ONLY" and r["outcome"] == "EXECUTE_RULE_EXIT" and r["final_action"] == "SELL")
+r = resolve_degraded(None, None, bull, None, 60)
+check("rule engine never opens positions", r["outcome"] == "RULE_SUGGEST_BUY" and r["final_action"] == "HOLD")
+check("rule signal holds on mixed data", rule_signal({"symbol": "X.NS", "rsi14": 50, "above_ema20": True, "above_ema50": False, "volume_ratio": 1.0}, None)["action"] == "HOLD")
 
 print("verdict parsing:")
 v = _parse_verdict('{"action": "buy", "confidence": 72, "reasoning": "x"}', "m")

@@ -52,8 +52,9 @@
   },
   "blockers": [],
   "notes": [
-    "Lean rebuild done: 17/17 smoke checks pass. Polling UI instead of WebSocket (1G folded in). Phase 2 (Kite) pending user keys."
+    "Lean rebuild done: 17/17 smoke checks pass. Polling UI instead of WebSocket (1G folded in). Phase 2 (Kite) pending user keys.",
+    "Fallback ladder added: FULL -> SOLO (bar 75) -> RULE_ONLY (protective exits only). 24/24 checks. Live-verified solo-Gemini path."
   ],
   "currentPhase": "1A",
-  "lastUpdated": "2026-07-14T07:01:39.860Z"
+  "lastUpdated": "2026-07-14T07:27:30.090Z"
 }

@@ -60,6 +60,21 @@ via the **Run council cycle now** button:
 You always have override: kill switch pauses everything instantly; manual
 buy/sell bypasses the council (risk rules still apply).
 
+## Fallback ladder — the engine never goes offline
+
+If an API is down (or its key isn't configured), the council degrades
+instead of stopping. The header badge shows the current tier:
+
+| Tier | When | Behaviour |
+|---|---|---|
+| **FULL COUNCIL** | Both keys work | Unanimous voting, trade bar = min confidence (60) |
+| **SOLO: CLAUDE / GEMINI** | One model unavailable | Survivor decides alone, but trade bar rises to 75 |
+| **RULE-ONLY** | Both unavailable | Indicator rules may *exit* positions protectively (EMA breakdown, RSI ≥ 78) but **never open new ones** |
+
+The stop-loss/target monitor is pure price logic and runs in every tier.
+A model that errors mid-cycle is treated the same as one with no key —
+each cycle uses whatever responds.
+
 ## API
 
 | Endpoint | What |
