@@ -1,0 +1,186 @@
+{
+  "nodes": [
+    {
+      "id": "phase-1A",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1A — Backend foundation**\nFastAPI, DB, models, migrations\nStatus: done\nFiles: tradeai/main.py, tradeai/db.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1B",
+      "type": "text",
+      "x": 280,
+      "y": 0,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1B — Market data layer**\nyfinance provider, indicators\nStatus: done\nFiles: tradeai/market.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1C",
+      "type": "text",
+      "x": 560,
+      "y": 0,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1C — Paper trading engine**\nPaper trading engine + risk guard\nStatus: done\nFiles: tradeai/engine.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1D",
+      "type": "text",
+      "x": 840,
+      "y": 0,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1D — Claude agents**\nResearch, Strategy, Risk, Execution\nStatus: done\nFiles: tradeai/council.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1E",
+      "type": "text",
+      "x": 1120,
+      "y": 0,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1E — Gemini + AI Council**\nArbitrator, all voting modes\nStatus: done\nFiles: tradeai/council.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1F",
+      "type": "text",
+      "x": 0,
+      "y": 160,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1F — Orchestrator**\nOrchestrator + Scheduler + Position monitor\nStatus: done\nFiles: tradeai/main.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1G",
+      "type": "text",
+      "x": 280,
+      "y": 160,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1G — WebSocket + alerts**\nWebSocket manager + alert system\nStatus: pending"
+    },
+    {
+      "id": "phase-1H",
+      "type": "text",
+      "x": 560,
+      "y": 160,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1H — REST API routers**\nAll REST API routers\nStatus: done\nFiles: tradeai/main.py",
+      "color": "4"
+    },
+    {
+      "id": "phase-1I",
+      "type": "text",
+      "x": 840,
+      "y": 160,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 1I — React frontend**\nAll 5 screens, PWA config\nStatus: done\nFiles: tradeai/static/index.html",
+      "color": "4"
+    },
+    {
+      "id": "phase-2",
+      "type": "text",
+      "x": 1120,
+      "y": 160,
+      "width": 260,
+      "height": 140,
+      "text": "**Phase 2 — Kite live trading**\nKite Connect live trading (Phase 2)\nStatus: pending"
+    },
+    {
+      "id": "resume-here",
+      "type": "text",
+      "x": 0,
+      "y": 480,
+      "width": 560,
+      "height": 260,
+      "color": "5",
+      "text": "## RESUME HERE\nBranch: claude/obsidian-map-checkpoints-qhshyw\nLast commit: 9cde1b9 Add Obsidian Canvas checkpoint tool for TradeAI build (12 minutes ago)\nCurrent phase: 1A\nLast updated: 2026-07-14T07:01:39.860Z\n\n**Blockers:**\nNONE\n\n**Recent notes:**\n- Lean rebuild done: 17/17 smoke checks pass. Polling UI instead of WebSocket (1G folded in). Phase 2 (Kite) pending user keys."
+    },
+    {
+      "id": "changed-files",
+      "type": "text",
+      "x": 600,
+      "y": 480,
+      "width": 400,
+      "height": 260,
+      "text": "## Working tree changes\nM .gitignore\n?? tradeai/"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1A-1B",
+      "fromNode": "phase-1A",
+      "fromSide": "right",
+      "toNode": "phase-1B",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1B-1C",
+      "fromNode": "phase-1B",
+      "fromSide": "right",
+      "toNode": "phase-1C",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1C-1D",
+      "fromNode": "phase-1C",
+      "fromSide": "right",
+      "toNode": "phase-1D",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1D-1E",
+      "fromNode": "phase-1D",
+      "fromSide": "right",
+      "toNode": "phase-1E",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1E-1F",
+      "fromNode": "phase-1E",
+      "fromSide": "bottom",
+      "toNode": "phase-1F",
+      "toSide": "top"
+    },
+    {
+      "id": "edge-1F-1G",
+      "fromNode": "phase-1F",
+      "fromSide": "right",
+      "toNode": "phase-1G",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1G-1H",
+      "fromNode": "phase-1G",
+      "fromSide": "right",
+      "toNode": "phase-1H",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1H-1I",
+      "fromNode": "phase-1H",
+      "fromSide": "right",
+      "toNode": "phase-1I",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-1I-2",
+      "fromNode": "phase-1I",
+      "fromSide": "right",
+      "toNode": "phase-2",
+      "toSide": "left"
+    }
+  ]
+}

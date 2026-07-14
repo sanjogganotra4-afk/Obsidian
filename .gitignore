@@ -1,3 +1,4 @@
 node_modules/
-vault/*/state.json
-vault/*/PROGRESS-MAP.canvas
+tradeai/.env
+tradeai/data/
+__pycache__/

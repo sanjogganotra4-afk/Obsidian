@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TradeAI">
+<link rel="manifest" href="/manifest.json">
+<title>TradeAI</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e;
+          --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:15px/1.45 -apple-system,system-ui,sans-serif;
+         padding:env(safe-area-inset-top) 12px 90px; max-width:900px; margin:0 auto; }
+  h1 { font-size:20px; padding:14px 4px 2px; display:flex; align-items:center; gap:10px; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:10px; border:1px solid var(--border); color:var(--dim); }
+  .badge.on { color:var(--green); border-color:var(--green); }
+  .badge.off { color:var(--red); border-color:var(--red); }
+  .sub { color:var(--dim); font-size:12px; padding:0 4px 12px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+  .stat .k { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  .stat .v { font-size:22px; font-weight:600; margin-top:2px; }
+  .pos { color:var(--green); } .neg { color:var(--red); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--dim); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--border); }
+  td { padding:8px; border-bottom:1px solid #21262d; }
+  .council-row { border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .council-row .verdict { font-weight:600; }
+  .council-row .models { display:flex; gap:14px; margin-top:6px; flex-wrap:wrap; }
+  .model { flex:1; min-width:200px; font-size:12.5px; color:var(--dim); }
+  .model b { color:var(--text); }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:8px; margin-left:6px; }
+  .tag.EXECUTE { background:#1a3a1f; color:var(--green); }
+  .tag.HARD_SPLIT { background:#3a1a1a; color:var(--red); }
+  .tag.SOFT_SPLIT,.tag.LOW_CONFIDENCE_HOLD { background:#3a2f1a; color:var(--amber); }
+  .tag.UNANIMOUS_HOLD { background:#21262d; color:var(--dim); }
+  button { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:9px;
+           padding:10px 16px; font-size:14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  button:active { background:#30363d; }
+  button.primary { background:#1f6feb; border-color:#1f6feb; }
+  button.danger { background:#8b2525; border-color:#8b2525; }
+  button.small { padding:5px 10px; font-size:12px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  input[type=text] { background:var(--bg); border:1px solid var(--border); border-radius:9px;
+                     color:var(--text); padding:10px 12px; font-size:14px; flex:1; min-width:180px; }
+  .tabs { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card);
+          border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); }
+  .tabs button { flex:1; border:0; border-radius:0; background:none; color:var(--dim); padding:14px 0 12px; font-size:13px; }
+  .tabs button.active { color:var(--blue); font-weight:600; }
+  .section { display:none; } .section.active { display:block; }
+  .notice { color:var(--amber); font-size:13px; margin-top:8px; }
+  .empty { color:var(--dim); font-size:13px; padding:8px 0; }
+</style>
+</head>
+<body>
+<h1>📈 TradeAI
+  <span class="badge" id="modeBadge">PAPER</span>
+  <span class="badge" id="marketBadge">…</span>
+  <span class="badge" id="councilBadge">…</span>
+</h1>
+<div class="sub" id="statusLine">Loading…</div>
+
+<div class="section active" id="tab-portfolio">
+  <div class="card grid">
+    <div class="stat"><div class="k">Total value</div><div class="v" id="stTotal">—</div></div>
+    <div class="stat"><div class="k">Cash</div><div class="v" id="stCash">—</div></div>
+    <div class="stat"><div class="k">Unrealized P&L</div><div class="v" id="stUnreal">—</div></div>
+    <div class="stat"><div class="k">Realized P&L</div><div class="v" id="stReal">—</div></div>
+    <div class="stat"><div class="k">Return</div><div class="v" id="stReturn">—</div></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:8px">Open positions</h3>
+    <div id="positions"></div>
+  </div>
+</div>
+
+<div class="section" id="tab-council">
+  <div class="card">
+    <div class="row">
+      <button class="primary" onclick="runCycle()" id="cycleBtn">▶ Run council cycle now</button>
+      <span class="notice" id="cycleNote"></span>
+    </div>
+  </div>
+  <div id="councilLog"></div>
+</div>
+
+<div class="section" id="tab-trades">
+  <div class="card"><div id="trades"></div></div>
+</div>
+
+<div class="section" id="tab-settings">
+  <div class="card">
+    <h3>Kill switch</h3>
+    <p class="sub" style="padding:6px 0">Instantly pauses all automated trading (council cycles and auto-exits).</p>
+    <button class="danger" id="killBtn" onclick="toggleKill()">…</button>
+  </div>
+  <div class="card">
+    <h3>Watchlist (NSE symbols)</h3>
+    <p class="sub" style="padding:6px 0">Comma-separated. ".NS" is added automatically.</p>
+    <div class="row">
+      <input type="text" id="watchlistInput" placeholder="RELIANCE, HDFCBANK, INFY">
+      <button onclick="saveWatchlist()">Save</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Manual override</h3>
+    <p class="sub" style="padding:6px 0">Buy or sell immediately, bypassing the council (risk rules still apply).</p>
+    <div class="row">
+      <input type="text" id="manualSymbol" placeholder="RELIANCE.NS">
+      <button onclick="manual('buy')">Buy</button>
+      <button onclick="manual('sell')">Sell</button>
+    </div>
+    <div class="notice" id="manualNote"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="active" onclick="show('portfolio',this)">Portfolio</button>
+  <button onclick="show('council',this)">Council</button>
+  <button onclick="show('trades',this)">Trades</button>
+  <button onclick="show('settings',this)">Settings</button>
+</div>
+
+<script>
+const inr = n => n == null ? '—' : '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0});
+const pnlCls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : '';
+let state = null;
+
+function show(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : undefined);
+  return r.json();
+}
+
+function render() {
+  const s = state, pf = s.portfolio;
+  document.getElementById('marketBadge').textContent = s.market_open ? 'MARKET OPEN' : 'MARKET CLOSED';
+  document.getElementById('marketBadge').className = 'badge ' + (s.market_open ? 'on' : 'off');
+  document.getElementById('councilBadge').textContent = s.council_ready ? 'COUNCIL READY' : 'COUNCIL OFFLINE';
+  document.getElementById('councilBadge').className = 'badge ' + (s.council_ready ? 'on' : 'off');
+  document.getElementById('statusLine').textContent =
+    (s.kill_switch ? '⛔ KILL SWITCH ON — trading paused. ' : '') +
+    (s.council_ready ? '' : s.council_status);
+
+  document.getElementById('stTotal').textContent = inr(pf.total);
+  document.getElementById('stCash').textContent = inr(pf.cash);
+  const un = document.getElementById('stUnreal'); un.textContent = inr(pf.unrealized_pnl); un.className = 'v ' + pnlCls(pf.unrealized_pnl);
+  const re = document.getElementById('stReal'); re.textContent = inr(pf.realized_pnl); re.className = 'v ' + pnlCls(pf.realized_pnl);
+  const rt = document.getElementById('stReturn'); rt.textContent = pf.total_return_pct + '%'; rt.className = 'v ' + pnlCls(pf.total_return_pct);
+
+  document.getElementById('positions').innerHTML = pf.positions.length
+    ? '<table><tr><th>Stock</th><th>Qty</th><th>Entry</th><th>LTP</th><th>P&L</th><th>SL / Target</th><th></th></tr>' +
+      pf.positions.map(p => `<tr><td><b>${p.symbol.replace('.NS','')}</b></td><td>${p.qty}</td><td>${p.entry_price}</td><td>${p.ltp}</td>
+        <td class="${pnlCls(p.pnl)}">${inr(p.pnl)}</td><td>${p.stop_loss} / ${p.target}</td>
+        <td><button class="small" onclick="sellPos('${p.symbol}')">Exit</button></td></tr>`).join('') + '</table>'
+    : '<div class="empty">No open positions. The council will open positions when both AIs agree.</div>';
+
+  document.getElementById('councilLog').innerHTML = s.council.length
+    ? s.council.map(c => `<div class="council-row">
+        <span class="verdict">${c.symbol.replace('.NS','')} → ${c.final_action}</span>
+        <span class="tag ${c.outcome.startsWith('COUNCIL_ERROR') ? 'HARD_SPLIT' : c.outcome}">${c.outcome}</span>
+        <span style="float:right;color:var(--dim);font-size:11px">${new Date(c.ts).toLocaleTimeString()}</span>
+        <div class="models">
+          <div class="model">🔵 <b>Claude</b> (risk): ${c.claude_action ?? '—'} ${c.claude_confidence ?? ''}<br>${c.claude_reasoning ?? ''}</div>
+          <div class="model">🟢 <b>Gemini</b> (technical): ${c.gemini_action ?? '—'} ${c.gemini_confidence ?? ''}<br>${c.gemini_reasoning ?? ''}</div>
+        </div></div>`).join('')
+    : '<div class="card empty">No council sessions yet. Tap "Run council cycle now".</div>';
+
+  document.getElementById('trades').innerHTML = s.trades.length
+    ? '<table><tr><th>Time</th><th>Stock</th><th>Side</th><th>Qty</th><th>Price</th><th>Note</th></tr>' +
+      s.trades.map(t => `<tr><td>${new Date(t.ts).toLocaleString()}</td><td><b>${t.symbol.replace('.NS','')}</b></td>
+        <td class="${t.side==='BUY'?'pos':'neg'}">${t.side}</td><td>${t.qty}</td><td>${t.price}</td><td style="color:var(--dim)">${t.note||''}</td></tr>`).join('') + '</table>'
+    : '<div class="empty">No trades yet.</div>';
+
+  const kb = document.getElementById('killBtn');
+  kb.textContent = s.kill_switch ? '▶ Resume trading' : '⛔ PAUSE ALL TRADING';
+  kb.className = s.kill_switch ? 'primary' : 'danger';
+  if (document.activeElement !== document.getElementById('watchlistInput'))
+    document.getElementById('watchlistInput').value = s.watchlist.map(w => w.replace('.NS','')).join(', ');
+}
+
+async function refresh() { try { state = await api('/api/state'); render(); } catch (e) { document.getElementById('statusLine').textContent = 'Cannot reach server: ' + e; } }
+
+async function runCycle() {
+  const btn = document.getElementById('cycleBtn'), note = document.getElementById('cycleNote');
+  btn.disabled = true; note.textContent = 'Council deliberating… (both AIs analysing each stock)';
+  try { const r = await api('/api/cycle', {}); note.textContent = r.ran ? 'Cycle complete.' : 'Not run: ' + r.reason; }
+  catch (e) { note.textContent = 'Error: ' + e; }
+  btn.disabled = false; refresh();
+}
+async function toggleKill() { await api('/api/killswitch', {active: !state.kill_switch}); refresh(); }
+async function saveWatchlist() {
+  await api('/api/watchlist', {symbols: document.getElementById('watchlistInput').value.split(',')}); refresh();
+}
+async function manual(side) {
+  const sym = document.getElementById('manualSymbol').value.trim();
+  if (!sym) return;
+  const r = await api('/api/' + side, {symbol: sym.endsWith('.NS') ? sym : sym + '.NS'});
+  document.getElementById('manualNote').textContent = r.ok ? `Done: ${side.toUpperCase()} ${r.qty} @ ${r.price}` : 'Rejected: ' + r.reason;
+  refresh();
+}
+async function sellPos(sym) { await api('/api/sell', {symbol: sym}); refresh(); }
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
